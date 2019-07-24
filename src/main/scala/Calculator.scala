@@ -6,8 +6,8 @@ import cats.implicits._
 object Calculator {
   @deriveFixedPoint sealed trait Expr
   object Expr {
-    final case class Number(i: Int) extends Expr
-    final case class Add(left: Expr, right: Expr) extends Expr
+    final case class Number(i: Int)                    extends Expr
+    final case class Add(left: Expr, right: Expr)      extends Expr
     final case class Multiply(left: Expr, right: Expr) extends Expr
   }
 
@@ -15,8 +15,8 @@ object Calculator {
   import Expr.fixedpoint._
 
   val evaluateAlgebra = Algebra[ExprF, Int] {
-    case NumberF(i) => i
-    case AddF(l, r) => l + r
+    case NumberF(i)      => i
+    case AddF(l, r)      => l + r
     case MultiplyF(l, r) => l * r
   }
 
@@ -46,7 +46,7 @@ object Calculator {
 
   val evaluate: Expr => Int = scheme.cata(evaluateAlgebra)
   val parse: String => Expr = scheme.ana(parseAlgebra)
-  val run: String => Int = scheme.hylo(evaluateAlgebra, parseAlgebra)
+  val run: String => Int    = scheme.hylo(evaluateAlgebra, parseAlgebra)
 
   def main(args: Array[String]): Unit = {
     println(run("2+2"))
