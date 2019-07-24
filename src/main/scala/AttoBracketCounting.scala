@@ -7,26 +7,27 @@ object AttoBracketCounting {
 
   case class ScanState[T](depth: Int, t: T)
 
-  def takeWhileNotUnbracketed(bads: Set[Char]): Parser[String] = {
-    StateT.liftF[Parser, ScanState[String], Unit](().pure[Parser]).whileM_(
+  def takeWhileNotUnbracketedInternal(
+                                       bads: Set[Char],
+                                       openBraces: Set[Char] = Set('[', '(', '{'),
+                                       closeBraces: Set[Char] = Set(']', ')', '}')): Parser[ScanState[String]] = {
+     StateT.liftF[Parser, ScanState[String], Unit](().pure[Parser]).whileM_(
       for {
         depth <- StateT.get[Parser, ScanState[String]].map(_.depth)
         body <- StateT.liftF(get)
         continue <- {
           body.headOption match {
-            case Some('(') | Some('{') => for {
+            case Some(c) if openBraces.contains(c) => for {
               _ <- StateT.modify[Parser, ScanState[String]] { case ScanState(d, s) =>
-                ScanState(d + 1, s + body.head.toString)
+                ScanState(d + 1, s + c.toString)
               }
               _ <- StateT.liftF(advance(1))
             } yield true
-            case Some(c) if Set(')', '}').contains(c) && bads.contains(c) => for {
-              _ <- StateT.modify[Parser, ScanState[String]] { s => s.copy(depth = s.depth - 1)}
-            } yield false
-
-            case Some(')') | Some('}') => for {
+            case Some(c) if closeBraces.contains(c) && depth == 0 && bads.contains(c) =>
+              StateT.liftF[Parser, ScanState[String], Boolean](false.pure[Parser])
+            case Some(c) if closeBraces.contains(c) => for {
               _ <- StateT.modify[Parser, ScanState[String]] { case ScanState(d, s) =>
-                ScanState(d - 1, s + body.head.toString)
+                ScanState(d - 1, s + c.toString)
               }
               _ <- StateT.liftF(advance(1))
             } yield true
@@ -43,7 +44,8 @@ object AttoBracketCounting {
           }
         }
       } yield continue
-    ).run(ScanState(0, "")).map(_._1.t)
+    ).run(ScanState(0, "")).map(_._1)
   }
 
+  def takeWhileNotUnbracketed(bads: Set[Char]): Parser[String] = takeWhileNotUnbracketedInternal(bads).map(_.t)
 }
